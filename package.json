@@ -6,6 +6,7 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
+    "standalone:start": "node .next/standalone/server.js",
     "lint": "next lint",
     "socket:start": "ts-node datasocket/index.ts",
     "fix-to-geojson": "ts-node datasocket/fix-to-geojson.ts"

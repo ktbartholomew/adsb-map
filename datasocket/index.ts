@@ -168,10 +168,14 @@ class DataStreamer {
 }
 
 async function main() {
-  const streamer = new DataStreamer("pi-02.local:30003");
+  ok(process.env.ADSB_HOST, "ADSB_HOST is required");
+
+  const streamer = new DataStreamer(process.env.ADSB_HOST);
   const server = new WebSocketServer({ port: 9000 });
 
   server.on("connection", (ws, req) => {
+    ws.send(JSON.stringify(streamer.getTracks({ history: false })));
+
     const interval = setInterval(() => {
       if (ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify(streamer.getTracks({ history: false })));
