@@ -44,8 +44,14 @@ class DataStreamer {
     });
 
     this.connection.on("data", this.onData.bind(this));
-    this.connection.on("close", () => this.connect(hostport));
-    this.connection.on("error", () => this.connect(hostport));
+    this.connection.on("close", () => {
+      console.log(`connection to ${hostport} closed`);
+      this.connect(hostport);
+    });
+    this.connection.on("error", (e) => {
+      console.error(e);
+      this.connect(hostport);
+    });
 
     return this.connection;
   }

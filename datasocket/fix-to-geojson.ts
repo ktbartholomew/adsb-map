@@ -20,8 +20,6 @@ function dmsToDec(dms: string) {
     seconds = parseInt(dms.slice(6, 6 + 4), 10) / 100;
   }
 
-  console.log(direction, degrees, minutes, seconds);
-
   let dec = degrees + minutes / 60 + seconds / 3600;
 
   if (direction === "W" || direction === "S") {

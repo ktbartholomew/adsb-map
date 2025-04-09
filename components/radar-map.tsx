@@ -1,12 +1,34 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Map, Marker } from "mapbox-gl";
 
 import "mapbox-gl/dist/mapbox-gl.css";
 import { TrackData, TrackDataSet } from "../lib/trackdata";
 import { addLayers } from "@/layers";
 
-const makeMarker = (pos: TrackData, map: Map): Marker | void => {
+type Flight = {
+  aircraft: {
+    type: string;
+    heavy: boolean;
+  };
+  destination: {
+    coord: [number, number];
+    friendlyName: string;
+    icao: string;
+  };
+  origin: {
+    coord: [number, number];
+    friendlyName: string;
+    icao: string;
+  };
+  flightPlan: { route: string };
+};
+
+const makeMarker = (
+  pos: TrackData,
+  flight: Flight | undefined,
+  map: Map
+): Marker | void => {
   if (pos.longitude && pos.latitude) {
     const el = document.createElement("div");
     el.className = "marker--live outline outline-lime-500 w-2 h-2";
@@ -21,14 +43,16 @@ const makeMarker = (pos: TrackData, map: Map): Marker | void => {
 
     const tag = document.createElement("div");
     tag.className =
-      "absolute left-4 top-0 leading-none whitespace-nowrap text-lime-500 font-mono";
+      "absolute left-4 top-0 leading-none whitespace-pre text-lime-500 font-mono";
     tag.innerText = `${pos.callsign ?? "---"}\n${Math.round(
       (pos.altitude ?? 0) / 100
     )
       .toString(10)
       .padStart(3, "0")}${
       pos.verticalRate ? (pos.verticalRate > 0 ? "↑" : "↓") : ""
-    } ${pos.speed ?? ""}\n${pos.squawk ?? ""}`;
+    } ${pos.speed ?? ""}\n${flight?.destination?.icao ?? "    "} ${
+      flight?.aircraft?.type ?? ""
+    }`;
     el.appendChild(tag);
 
     return new Marker(el).setLngLat([pos.longitude, pos.latitude]).addTo(map);
@@ -40,23 +64,71 @@ export function RadarMap() {
   const mapContainer = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket>(undefined);
   const [wsUrl, setWsUrl] = useState("");
+  const [flights, setFlights] = useState<Record<string, Flight>>({});
+
+  const getFlight = useMemo(
+    () =>
+      (track: TrackData): Flight | undefined => {
+        if (!track.callsign) {
+          return undefined;
+        }
+
+        if (flights[track.callsign]) {
+          return flights[track.callsign];
+        }
+
+        fetch(`/api/flight/${encodeURIComponent(track.callsign)}`)
+          .then((resp) => resp.json() as Promise<Flight>)
+          .then((flight: Flight) => {
+            setFlights((prev) => {
+              if (!track.callsign) {
+                return prev;
+              }
+
+              prev[track.callsign] = flight;
+              return prev;
+            });
+          })
+          .catch((e) => {
+            console.error(e);
+          });
+
+        return undefined;
+      },
+    []
+  );
 
   useEffect(() => {
     mapRef.current = new Map({
       accessToken: process.env.NEXT_PUBLIC_MAPBOX_TOKEN,
       container: mapContainer.current || "",
       center: [-97.1766223819563, 32.70097504372159], // starting position [lng, lat]
-      projection: "mercator",
-      dragRotate: false,
+      // projection: "mercator",
+      // dragRotate: false,
       minZoom: 7,
       zoom: 10,
-      // style: "mapbox://styles/ktbartholomew/cm95uquvl00b901qu1d9kf3lj",
-      style: "mapbox://styles/mapbox/dark-v11",
+      style: "mapbox://styles/ktbartholomew/cm99xjido000e01qke7khdtwx",
+      // style: "mapbox://styles/mapbox/dark-v11",
     });
 
     mapRef.current.on("load", () => {
       if (mapRef.current) {
         addLayers(mapRef.current);
+
+        mapRef.current.addSource("major_runways", {
+          type: "vector",
+          url: "mapbox://ktbartholomew.cm97v0tse01zi1pjy0ir5t4qy-6c7yd",
+        });
+        mapRef.current.addLayer({
+          id: "major_runways",
+          source: "major_runways",
+          "source-layer": "major_runways",
+          type: "fill",
+          paint: {
+            "line-color": "#FFF",
+            "fill-color": "#FFF",
+          },
+        });
       }
     });
   }, []);
@@ -82,7 +154,7 @@ export function RadarMap() {
 
     let markers: Marker[] = [];
 
-    wsRef.current.addEventListener("message", (ev) => {
+    wsRef.current.addEventListener("message", async (ev) => {
       if (!mapRef.current) {
         return;
       }
@@ -97,7 +169,11 @@ export function RadarMap() {
       for (const key in data) {
         const track = data[key];
 
-        const marker = makeMarker(track.latestData, mapRef.current);
+        const marker = makeMarker(
+          track.latestData,
+          await getFlight(track.latestData),
+          mapRef.current
+        );
         if (marker) {
           markers.push(marker);
         }
@@ -105,13 +181,20 @@ export function RadarMap() {
     });
 
     wsRef.current.addEventListener("close", () => {
+      markers.forEach((m) => {
+        m.remove();
+      });
+      markers = [];
+      setFlights({});
       setWsUrl("");
     });
 
     return () => {
       wsRef.current?.close();
+      markers = [];
+      setFlights({});
     };
-  }, [wsUrl]);
+  }, [wsUrl, getFlight]);
 
   return (
     <div
