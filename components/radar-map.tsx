@@ -4,7 +4,7 @@ import { Map, Marker } from "mapbox-gl";
 
 import "mapbox-gl/dist/mapbox-gl.css";
 import { TrackData, TrackDataSet } from "../lib/trackdata";
-import { addLayers } from "@/layers";
+import { addLayers, Flow } from "@/layers";
 import { Flight } from "@/flight";
 
 const PUBLIC_MAPBOX_TOKEN =
@@ -54,7 +54,7 @@ const makeMarker = (
   }
 };
 
-export function RadarMap() {
+export function RadarMap(props: { flow: Flow }) {
   const mapRef = useRef<Map>(undefined);
   const mapContainer = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket>(undefined);
@@ -107,7 +107,7 @@ export function RadarMap() {
 
     mapRef.current.on("load", () => {
       if (mapRef.current) {
-        addLayers(mapRef.current);
+        addLayers(mapRef.current, props.flow);
 
         mapRef.current.addSource("major_runways", {
           type: "vector",
@@ -125,7 +125,11 @@ export function RadarMap() {
         });
       }
     });
-  }, []);
+
+    return () => {
+      mapRef.current?.remove();
+    };
+  }, [props.flow]);
 
   async function fetchConfig() {
     try {

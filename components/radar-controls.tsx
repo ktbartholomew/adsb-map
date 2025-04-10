@@ -1,11 +1,27 @@
-export function RadarControls() {
+import { Flow } from "@/layers";
+import { Dispatch, SetStateAction } from "react";
+
+export function RadarControls(props: {
+  flow: Flow;
+  setFlow: Dispatch<SetStateAction<Flow>>;
+}) {
   return (
     <div className=" bg-black text-white font-mono flex">
       <div>
-        <button className="block w-[64px] h-[32px] border border-white cursor-pointer text-sm">
+        <button
+          className={`block w-[64px] h-[32px] border border-white cursor-pointer text-sm ${
+            props.flow === "N" ? "bg-white text-black" : ""
+          }`}
+          onClick={() => props.setFlow("N")}
+        >
           DFW N
         </button>
-        <button className="block w-[64px] h-[32px] border border-white cursor-pointer text-sm bg-white text-black">
+        <button
+          className={`block w-[64px] h-[32px] border border-white cursor-pointer text-sm ${
+            props.flow === "S" ? "bg-white text-black" : ""
+          }`}
+          onClick={() => props.setFlow("S")}
+        >
           DFW S
         </button>
       </div>

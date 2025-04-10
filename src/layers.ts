@@ -1,6 +1,8 @@
 import { Map, PaintSpecification } from "mapbox-gl";
 import { Position } from "geojson";
 
+export type Flow = "N" | "S";
+
 const styles: Record<string, PaintSpecification> = {
   iap: {
     "line-opacity": 0.5,
@@ -24,7 +26,7 @@ const styles: Record<string, PaintSpecification> = {
 
 const paths: Record<
   string,
-  { flow?: "N" | "S"; type: "iap" | "star" | "dp"; coordinates: Position[] }
+  { flow?: Flow; type: "iap" | "star" | "dp"; coordinates: Position[] }
 > = {
   "36L": {
     flow: "N",
@@ -99,6 +101,30 @@ const paths: Record<
       [-97.18591111111111, 32.28496111111111],
     ],
   },
+  NELYN6_W_N: {
+    flow: "N",
+    type: "dp",
+    coordinates: [
+      [-97.08154444444445, 33.01208333333334],
+      [-97.16735277777778, 33.006997222222225],
+      [-97.24000833333334, 32.99982777777778],
+      [-97.29379444444444, 32.95241666666667],
+      [-97.28459166666667, 32.779975],
+      [-97.18591111111111, 32.28496111111111],
+    ],
+  },
+  NELYN6_E_N: {
+    flow: "N",
+    type: "dp",
+    coordinates: [
+      [-96.9975, 33.02027777777778],
+      [-96.92275277777779, 33.013780555555556],
+      [-96.86196944444444, 33.009166666666665],
+      [-96.788825, 32.959225],
+      [-96.79246944444444, 32.756052777777775],
+      [-97.18591111111111, 32.28496111111111],
+    ],
+  },
   JAPSA_7_W_S: {
     flow: "S",
     type: "dp",
@@ -114,6 +140,22 @@ const paths: Record<
     coordinates: [
       [-96.97913333333334, 32.60811944444445],
       [-96.99331666666667, 32.550916666666666],
+      [-97.05899166666666, 32.28503055555555],
+    ],
+  },
+  JAPSA_7_W_N: {
+    flow: "N",
+    type: "dp",
+    coordinates: [
+      [-97.28459166666667, 32.779975],
+      [-97.05899166666666, 32.28503055555555],
+    ],
+  },
+  JAPSA_7_E_N: {
+    flow: "N",
+    type: "dp",
+    coordinates: [
+      [-96.79246944444444, 32.756052777777775],
       [-97.05899166666666, 32.28503055555555],
     ],
   },
@@ -136,6 +178,22 @@ const paths: Record<
       [-96.93786666666666, 32.28507222222222],
     ],
   },
+  ARDIA_7_W_N: {
+    flow: "N",
+    type: "dp",
+    coordinates: [
+      [-97.28459166666667, 32.779975],
+      [-96.93786666666666, 32.28507222222222],
+    ],
+  },
+  ARDIA_7_E_N: {
+    flow: "N",
+    type: "dp",
+    coordinates: [
+      [-96.79246944444444, 32.756052777777775],
+      [-96.93786666666666, 32.28507222222222],
+    ],
+  },
   DARTZ_9_W_S: {
     flow: "S",
     type: "dp",
@@ -151,6 +209,22 @@ const paths: Record<
     coordinates: [
       [-96.97913333333334, 32.60811944444445],
       [-96.96035277777779, 32.56971111111111],
+      [-96.81105, 32.28575555555555],
+    ],
+  },
+  DARTZ_9_W_N: {
+    flow: "N",
+    type: "dp",
+    coordinates: [
+      [-97.28459166666667, 32.779975],
+      [-96.81105, 32.28575555555555],
+    ],
+  },
+  DARTZ_9_E_N: {
+    flow: "N",
+    type: "dp",
+    coordinates: [
+      [-96.79246944444444, 32.756052777777775],
       [-96.81105, 32.28575555555555],
     ],
   },
@@ -209,11 +283,29 @@ const paths: Record<
       [-97.73395000000001, 32.778238888888886],
     ],
   },
+  KATZZ2_N: {
+    flow: "N",
+    type: "dp",
+    coordinates: [
+      [-97.24000833333334, 32.99982777777778],
+      [-97.73395000000001, 32.778238888888886],
+    ],
+  },
   HRPER3_S: {
     flow: "S",
     type: "dp",
     coordinates: [
       [-97.241325, 32.77160277777778],
+      [-97.733275, 32.88948333333333],
+    ],
+  },
+  HRPER3_N: {
+    flow: "N",
+    type: "dp",
+    coordinates: [
+      [-97.05321666666666, 33.07084444444445],
+      [-97.13851666666667, 33.084805555555555],
+      [-97.26523888888889, 33.064838888888886],
       [-97.733275, 32.88948333333333],
     ],
   },
@@ -223,6 +315,22 @@ const paths: Record<
     coordinates: [
       [-97.241325, 32.77160277777778],
       [-97.733275, 32.989894444444445],
+    ],
+  },
+  HUDAD_N: {
+    flow: "N",
+    type: "dp",
+    coordinates: [
+      [-97.13851666666667, 33.084805555555555],
+      [-97.733275, 32.989894444444445],
+    ],
+  },
+  WSTEX_2_W_N: {
+    flow: "N",
+    type: "dp",
+    coordinates: [
+      [-97.24000833333334, 32.99982777777778],
+      [-97.734, 32.678041666666665],
     ],
   },
   BOOVE7: {
@@ -238,9 +346,8 @@ const paths: Record<
   },
 };
 
-export function addLayers(map: Map) {
-  const flow = "S";
-
+export function addLayers(map: Map, flow: Flow): VoidFunction {
+  const layers: string[] = [];
   for (const key in paths) {
     if (paths[key].flow && paths[key].flow !== flow) {
       continue;
@@ -258,6 +365,7 @@ export function addLayers(map: Map) {
       },
     });
 
+    layers.push(key);
     map.addLayer({
       id: key,
       type: "line",
@@ -269,4 +377,12 @@ export function addLayers(map: Map) {
       paint: styles[paths[key].type],
     });
   }
+
+  return function cleanup() {
+    for (const layer of layers) {
+      console.log("removing " + layer);
+      map.removeLayer(layer);
+      map.removeSource(layer);
+    }
+  };
 }
