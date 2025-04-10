@@ -1,5 +1,5 @@
 import { createConnection, Socket } from "node:net";
-import WebSocket, { WebSocketServer } from "ws";
+import { WebSocket, WebSocketServer } from "ws";
 import { TrackData, TrackDataSet } from "../lib/trackdata";
 import { ok } from "node:assert";
 
