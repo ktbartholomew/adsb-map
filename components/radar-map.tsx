@@ -6,6 +6,9 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { TrackData, TrackDataSet } from "../lib/trackdata";
 import { addLayers } from "@/layers";
 
+const PUBLIC_MAPBOX_TOKEN =
+  "pk.eyJ1Ijoia3RiYXJ0aG9sb21ldyIsImEiOiJjbTk1dTg1MzIwNHcxMnRwczJtengxcjVnIn0.sUHZ0QrRZ7CuIBEtFbuQWA";
+
 type Flight = {
   aircraft: {
     type: string;
@@ -100,15 +103,14 @@ export function RadarMap() {
 
   useEffect(() => {
     mapRef.current = new Map({
-      accessToken: process.env.NEXT_PUBLIC_MAPBOX_TOKEN,
+      accessToken: PUBLIC_MAPBOX_TOKEN,
       container: mapContainer.current || "",
       center: [-97.1766223819563, 32.70097504372159], // starting position [lng, lat]
-      // projection: "mercator",
-      // dragRotate: false,
+      projection: "mercator",
+      dragRotate: false,
       minZoom: 7,
       zoom: 10,
       style: "mapbox://styles/ktbartholomew/cm99xjido000e01qke7khdtwx",
-      // style: "mapbox://styles/mapbox/dark-v11",
     });
 
     mapRef.current.on("load", () => {
