@@ -39,20 +39,51 @@ const makeMarker = (
     tag.className =
       "absolute left-4 top-0 leading-none whitespace-pre text-lime-500 font-mono";
     tag.style.opacity = opacity.toString();
-    tag.innerText = `${pos.callsign ?? "---"}\n${Math.round(
-      (pos.altitude ?? 0) / 100
-    )
-      .toString(10)
-      .padStart(3, "0")}${
-      pos.verticalRate ? (pos.verticalRate > 0 ? "↑" : "↓") : ""
-    } ${pos.speed ?? ""}\n${flight?.destination?.icao ?? "    "} ${
-      flight?.aircraft?.type ?? ""
-    }`;
+    tag.innerText = makeTag(pos, flight);
     el.appendChild(tag);
 
     return new Marker(el).setLngLat([pos.longitude, pos.latitude]).addTo(map);
   }
 };
+
+function makeTag(pos: TrackData, flight?: Flight): string {
+  const callsign = pos.callsign ?? "---";
+  const alt = Math.round((pos.altitude ?? 0) / 100)
+    .toString(10)
+    .padStart(3, "0");
+
+  let vertical = " ";
+  if (
+    pos.verticalRate &&
+    Math.abs(pos.verticalRate) > 100 &&
+    pos.verticalRate > 0
+  ) {
+    vertical = "↑";
+  }
+  if (
+    pos.verticalRate &&
+    Math.abs(pos.verticalRate) > 100 &&
+    pos.verticalRate < 0
+  ) {
+    vertical = "↓";
+  }
+
+  const locals = ["KDFW", "KDAL", "KFTW", "KAFW"];
+  let scratchpad = "    ";
+  if (
+    flight?.destination?.icao &&
+    flight?.origin?.icao &&
+    locals.includes(flight.destination.icao)
+  ) {
+    scratchpad = flight.origin.icao;
+  } else if (flight?.destination?.icao) {
+    scratchpad = flight.destination.icao;
+  }
+
+  return `${callsign}
+${alt}${vertical}${pos.speed ?? ""}
+${scratchpad} ${flight?.aircraft?.type ?? ""}`;
+}
 
 export function RadarMap(props: { flow: Flow }) {
   const mapRef = useRef<Map>(undefined);
