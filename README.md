@@ -1,36 +1,97 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ADS-B Map
 
-## Getting Started
+A real-time, radar-style map that visualizes aircraft tracks from ADS-B data. The frontend is a Next.js app that connects over WebSocket to a separate service that streams decoded position updates.
 
-First, run the development server:
+## What’s in this repo
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- `src/` — Next.js app (UI + API routes).
+- `components/` — React components for the map and controls.
+- `datasocket/` — WebSocket service that reads ADS-B frames over TCP and streams aircraft positions to the frontend.
+
+## Architecture overview
+
+1. `datasocket` connects to a TCP ADS-B feed and decodes frames.
+2. `datasocket` publishes decoded position updates over WebSocket.
+3. The Next.js frontend connects to that WebSocket and renders live tracks.
+
+## Data sources
+
+`datasocket` reads ADS-B frames from a TCP source, like the TCP output of `dump1090` (https://github.com/antirez/dump1090), which provides a feed of raw frames. You can run `dump1090` locally or remotely and point `datasocket` at it using `ADSB_HOST`.
+
+Setting up an ADS-B receiver is out of scope for this repo, but there are many guides online. Hardware suggestions:
+
+- RTL-SDR dongle for general-purpose SDR hacking (https://www.rtl-sdr.com/)
+- ADSBExchange kit (https://store.adsbexchange.com/)
+
+The `GET /api/flight/<callsign>` endpoint scrapes aircraft details from FlightAware to enrich the UI. This likely violates FlightAware’s Terms of Service and should only be used for personal, experimental, fair-use purposes. If you abuse it, expect rate limits or outright denial. If you need production or commercial data, use an official API.
+
+Links to radio feeds in the UI are provided by LiveATC (https://www.liveatc.net/) and remain their property. Use them only in a limited personal/experimental capacity and follow their terms.
+
+## Configuration
+
+### Environment variables
+
+- `WS_URL` — WebSocket URL that the frontend should connect to for live data (the `datasocket` service).
+- `ADSB_HOST` — TCP host (and optional port) that `datasocket` should connect to for raw ADS-B frames (typically `dump1090`, often on port 30002).
+- `NEXT_PUBLIC_MAPBOX_TOKEN` — Public Mapbox access token used by the frontend.
+
+Example `datasocket/.env`:
+
+```
+ADSB_HOST=127.0.0.1:30002
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Example `/.env.local` for the Next.js app:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+NEXT_PUBLIC_MAPBOX_TOKEN=pk...
+WS_URL=ws://127.0.0.1:8787
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Running locally (step by step)
 
-## Learn More
+1. Install dependencies:
 
-To learn more about Next.js, take a look at the following resources:
+```
+npm install
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+2. Make sure you have an ADS-B TCP feed available (usually `dump1090` running somewhere). If you’re not running one locally, point `ADSB_HOST` at a remote instance you control.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+3. Configure the `datasocket` service:
 
-## Deploy on Vercel
+```
+ADSB_HOST=127.0.0.1:30002
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+4. Build and start `datasocket`:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+npm run socket:build
+ADSB_HOST=127.0.0.1:30002 npm run socket:start
+```
+
+5. Configure the frontend:
+
+```
+NEXT_PUBLIC_MAPBOX_TOKEN=pk...
+WS_URL=ws://127.0.0.1:8787
+```
+
+6. Start the frontend:
+
+```
+npm run dev
+```
+
+7. Open http://localhost:3000.
+
+## Mapbox token guidance
+
+The map uses Mapbox GL in the browser. Use a public token and lock it down with URL restrictions in your Mapbox account. Do not ship a secret token to the client.
+
+Recommended setup:
+
+- Create a public token in Mapbox.
+- Restrict it to your dev/prod domains.
+- Set it in `NEXT_PUBLIC_MAPBOX_TOKEN`.

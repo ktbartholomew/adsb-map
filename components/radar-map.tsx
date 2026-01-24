@@ -7,8 +7,7 @@ import { TrackData, TrackDataSet } from "../lib/trackdata";
 import { addLayers, Flow } from "@/layers";
 import { Flight } from "@/flight";
 
-const PUBLIC_MAPBOX_TOKEN =
-  "pk.eyJ1Ijoia3RiYXJ0aG9sb21ldyIsImEiOiJjbTk1dTg1MzIwNHcxMnRwczJtengxcjVnIn0.sUHZ0QrRZ7CuIBEtFbuQWA";
+const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? "";
 
 const makeMarker = (
   pos: TrackData,
@@ -125,8 +124,15 @@ export function RadarMap(props: { flow: Flow }) {
   );
 
   useEffect(() => {
+    if (!MAPBOX_TOKEN) {
+      console.error(
+        "Missing NEXT_PUBLIC_MAPBOX_TOKEN. Mapbox cannot initialize without it."
+      );
+      return;
+    }
+
     mapRef.current = new Map({
-      accessToken: PUBLIC_MAPBOX_TOKEN,
+      accessToken: MAPBOX_TOKEN,
       container: mapContainer.current || "",
       center: [-97.1766223819563, 32.70097504372159], // starting position [lng, lat]
       projection: "mercator",
