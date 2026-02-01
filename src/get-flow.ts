@@ -1,6 +1,6 @@
-"use server";
+import "server-only";
 
-import { Flow } from "@/layers";
+import { Flow } from "./layers";
 
 const DEFAULT_FLOW: Flow = "S";
 
@@ -13,8 +13,9 @@ type AtisResponse = {
   updatedAt: string;
 }[];
 
-async function getFlow(): Promise<Flow> {
+export async function getFlow(): Promise<Flow> {
   try {
+    console.log("fetching KDFW ATIS");
     const atis = await fetch("https://atis.info/api/KDFW", {
       cache: "force-cache",
       next: { revalidate: 3600 },
@@ -28,17 +29,11 @@ async function getFlow(): Promise<Flow> {
 
     if (arr.datis.match(/18R|18L|17R|17C|17L/)) {
       return "S";
-    } else {
-      return "N";
     }
+
+    return "N";
   } catch (e) {
     console.warn((e as Error).message);
     return DEFAULT_FLOW;
   }
-}
-
-export async function GET() {
-  const flow = await getFlow();
-
-  return Response.json({ flow, wsUrl: process.env.WS_URL });
 }

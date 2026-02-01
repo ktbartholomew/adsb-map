@@ -1,15 +1,16 @@
-"use client";
+import { Radar } from "../../components/radar";
+import { getFlow } from "../get-flow";
 
-import { RadarControls } from "../../components/radar-controls";
-import { RadarMap } from "../../components/radar-map";
-import { useConfig } from "@/config";
+export const dynamic = "force-dynamic";
 
-export default function Home() {
-  const config = useConfig();
+export default async function Home() {
+  const mapboxToken = process.env.MAPBOX_TOKEN ?? "";
+  const wsUrl = process.env.WS_URL ?? "";
+  const flow = await getFlow();
+
   return (
     <div className="w-[100vw] h-[100vh]">
-      <RadarControls flow={config.data.flow} setFlow={() => {}} />
-      <RadarMap flow={config.data.flow} />
+      <Radar flow={flow} mapboxToken={mapboxToken} wsUrl={wsUrl} />
     </div>
   );
 }

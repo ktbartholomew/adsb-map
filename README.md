@@ -31,9 +31,11 @@ Links to radio feeds in the UI are provided by LiveATC (https://www.liveatc.net/
 
 ### Environment variables
 
+These are read at runtime by the Next.js server; you can build without them and set them when starting the app/container.
+
 - `WS_URL` — WebSocket URL that the frontend should connect to for live data (the `datasocket` service).
 - `ADSB_HOST` — TCP host (and optional port) that `datasocket` should connect to for raw ADS-B frames (typically `dump1090`, often on port 30002).
-- `NEXT_PUBLIC_MAPBOX_TOKEN` — Public Mapbox access token used by the frontend.
+- `MAPBOX_TOKEN` — Public Mapbox access token used by the frontend.
 
 Example `datasocket/.env`:
 
@@ -44,7 +46,7 @@ ADSB_HOST=127.0.0.1:30002
 Example `/.env.local` for the Next.js app:
 
 ```
-NEXT_PUBLIC_MAPBOX_TOKEN=pk...
+MAPBOX_TOKEN=pk...
 WS_URL=ws://127.0.0.1:8787
 ```
 
@@ -74,7 +76,7 @@ ADSB_HOST=127.0.0.1:30002 npm run socket:start
 5. Configure the frontend:
 
 ```
-NEXT_PUBLIC_MAPBOX_TOKEN=pk...
+MAPBOX_TOKEN=pk...
 WS_URL=ws://127.0.0.1:8787
 ```
 
@@ -94,4 +96,4 @@ Recommended setup:
 
 - Create a public token in Mapbox.
 - Restrict it to your dev/prod domains.
-- Set it in `NEXT_PUBLIC_MAPBOX_TOKEN`.
+- Set it in `MAPBOX_TOKEN`.
