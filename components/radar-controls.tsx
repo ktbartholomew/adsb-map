@@ -6,7 +6,7 @@ export function RadarControls(props: {
   setFlow: Dispatch<SetStateAction<Flow>>;
 }) {
   return (
-    <div className=" bg-black text-white font-mono flex">
+    <div className="absolute w-full z-20 bg-black/50 text-white font-mono flex">
       <div>
         <button
           className={`block w-[64px] h-[32px] border border-white cursor-pointer text-sm ${

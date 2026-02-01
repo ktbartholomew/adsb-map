@@ -1,16 +1,15 @@
 "use client";
 
-import { useState } from "react";
 import { RadarControls } from "../../components/radar-controls";
 import { RadarMap } from "../../components/radar-map";
-import { Flow } from "@/layers";
+import { useConfig } from "@/config";
 
 export default function Home() {
-  const [flow, setFlow] = useState<Flow>("S");
+  const config = useConfig();
   return (
     <div className="w-[100vw] h-[100vh]">
-      <RadarControls flow={flow} setFlow={setFlow} />
-      <RadarMap flow={flow} />
+      <RadarControls flow={config.data.flow} setFlow={() => {}} />
+      <RadarMap flow={config.data.flow} />
     </div>
   );
 }

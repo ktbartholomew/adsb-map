@@ -6,13 +6,14 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { TrackData, TrackDataSet } from "../lib/trackdata";
 import { addLayers, Flow } from "@/layers";
 import { Flight } from "@/flight";
+import { useConfig } from "@/config";
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? "";
 
 const makeMarker = (
   pos: TrackData,
   flight: Flight | undefined,
-  map: Map
+  map: Map,
 ): Marker | void => {
   const opacity = Math.max((130 - (Date.now() - pos.time) / 600) / 100, 0);
 
@@ -85,10 +86,11 @@ ${scratchpad} ${flight?.aircraft?.type ?? ""}`;
 }
 
 export function RadarMap(props: { flow: Flow }) {
+  const config = useConfig();
+  console.log(config.data);
   const mapRef = useRef<Map>(undefined);
   const mapContainer = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket>(undefined);
-  const [wsUrl, setWsUrl] = useState("");
   const [flights, setFlights] = useState<Record<string, Flight>>({});
 
   const getFlight = useMemo(
@@ -120,13 +122,13 @@ export function RadarMap(props: { flow: Flow }) {
 
         return undefined;
       },
-    [flights]
+    [flights],
   );
 
   useEffect(() => {
     if (!MAPBOX_TOKEN) {
       console.error(
-        "Missing NEXT_PUBLIC_MAPBOX_TOKEN. Mapbox cannot initialize without it."
+        "Missing NEXT_PUBLIC_MAPBOX_TOKEN. Mapbox cannot initialize without it.",
       );
       return;
     }
@@ -168,24 +170,12 @@ export function RadarMap(props: { flow: Flow }) {
     };
   }, [props.flow]);
 
-  async function fetchConfig() {
-    try {
-      const resp = await fetch("/api/config");
-      const body = (await resp.json()) as { wsUrl: string };
-
-      setWsUrl(body.wsUrl);
-    } catch (e) {
-      console.error(e);
-    }
-  }
-
   useEffect(() => {
-    if (!wsUrl) {
-      fetchConfig();
+    if (!config.data.wsUrl) {
       return;
     }
 
-    wsRef.current = new WebSocket(wsUrl);
+    wsRef.current = new WebSocket(config.data.wsUrl);
 
     let markers: Marker[] = [];
 
@@ -207,7 +197,7 @@ export function RadarMap(props: { flow: Flow }) {
         const marker = makeMarker(
           track.latestData,
           await getFlight(track.latestData),
-          mapRef.current
+          mapRef.current,
         );
         if (marker) {
           markers.push(marker);
@@ -221,7 +211,6 @@ export function RadarMap(props: { flow: Flow }) {
       });
       markers = [];
       setFlights({});
-      setWsUrl("");
     });
 
     return () => {
@@ -229,7 +218,7 @@ export function RadarMap(props: { flow: Flow }) {
       markers = [];
       setFlights({});
     };
-  }, [wsUrl, getFlight]);
+  }, [config.data.wsUrl, getFlight]);
 
   return (
     <div
