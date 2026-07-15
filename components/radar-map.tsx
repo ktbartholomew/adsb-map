@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { Map, Marker } from "mapbox-gl";
 
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -90,39 +90,38 @@ export function RadarMap(props: {
   const mapRef = useRef<Map>(undefined);
   const mapContainer = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket>(undefined);
-  const [flights, setFlights] = useState<Record<string, Flight>>({});
+  const flightsRef = useRef<Record<string, Flight>>({});
+  const flightRequestsRef = useRef<Set<string>>(new Set());
 
-  const getFlight = useMemo(
-    () =>
-      (track: TrackData): Flight | undefined => {
-        if (!track.callsign) {
-          return undefined;
-        }
+  const getFlight = useCallback((track: TrackData): Flight | undefined => {
+    const callsign = track.callsign;
+    if (!callsign) {
+      return undefined;
+    }
 
-        if (flights[track.callsign]) {
-          return flights[track.callsign];
-        }
+    if (flightsRef.current[callsign]) {
+      return flightsRef.current[callsign];
+    }
 
-        fetch(`/api/flight/${encodeURIComponent(track.callsign)}`)
-          .then((resp) => resp.json() as Promise<Flight>)
-          .then((flight: Flight) => {
-            setFlights((prev) => {
-              if (!track.callsign) {
-                return prev;
-              }
+    if (flightRequestsRef.current.has(callsign)) {
+      return undefined;
+    }
 
-              prev[track.callsign] = flight;
-              return prev;
-            });
-          })
-          .catch((e) => {
-            console.error(e);
-          });
+    flightRequestsRef.current.add(callsign);
+    fetch(`/api/flight/${encodeURIComponent(callsign)}`)
+      .then((resp) => resp.json() as Promise<Flight>)
+      .then((flight: Flight) => {
+        flightsRef.current[callsign] = flight;
+      })
+      .catch((e) => {
+        console.error(e);
+      })
+      .finally(() => {
+        flightRequestsRef.current.delete(callsign);
+      });
 
-        return undefined;
-      },
-    [flights],
-  );
+    return undefined;
+  }, []);
 
   useEffect(() => {
     if (!props.mapBoxToken) {
@@ -173,48 +172,148 @@ export function RadarMap(props: {
       return;
     }
 
-    wsRef.current = new WebSocket(props.wsUrl);
-
     let markers: Marker[] = [];
+    let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
+    let reconnectAttempts = 0;
+    let closed = false;
+    let paused = false;
 
-    wsRef.current.addEventListener("message", async (ev) => {
-      if (!mapRef.current) {
-        return;
-      }
-
-      const data = JSON.parse(ev.data) as Record<string, TrackDataSet>;
-
+    const clearMarkers = () => {
       markers.forEach((m) => {
         m.remove();
       });
       markers = [];
+    };
+
+    const scheduleReconnect = () => {
+      if (closed || paused || document.visibilityState === "hidden") {
+        return;
+      }
+
+      const delay = Math.min(1000 * 2 ** reconnectAttempts, 30000);
+      reconnectAttempts = Math.min(reconnectAttempts + 1, 5);
+
+      reconnectTimer = setTimeout(() => {
+        connect();
+      }, delay);
+    };
+
+    const onMessage = (ws: WebSocket, ev: MessageEvent<string>) => {
+      if (ws !== wsRef.current || !mapRef.current) {
+        return;
+      }
+
+      let data: Record<string, TrackDataSet>;
+      try {
+        data = JSON.parse(ev.data) as Record<string, TrackDataSet>;
+      } catch (e) {
+        console.error(e);
+        return;
+      }
+
+      clearMarkers();
 
       for (const key in data) {
         const track = data[key];
 
         const marker = makeMarker(
           track.latestData,
-          await getFlight(track.latestData),
+          getFlight(track.latestData),
           mapRef.current,
         );
         if (marker) {
           markers.push(marker);
         }
       }
-    });
+    };
 
-    wsRef.current.addEventListener("close", () => {
-      markers.forEach((m) => {
-        m.remove();
+    const connect = () => {
+      if (closed || paused || document.visibilityState === "hidden") {
+        return;
+      }
+
+      if (
+        wsRef.current &&
+        (wsRef.current.readyState === WebSocket.CONNECTING ||
+          wsRef.current.readyState === WebSocket.OPEN)
+      ) {
+        return;
+      }
+
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = undefined;
+      }
+
+      const ws = new WebSocket(props.wsUrl);
+      wsRef.current = ws;
+
+      ws.addEventListener("open", () => {
+        reconnectAttempts = 0;
       });
-      markers = [];
-      setFlights({});
-    });
+
+      ws.addEventListener("message", (ev) => {
+        onMessage(ws, ev);
+      });
+
+      ws.addEventListener("close", () => {
+        if (wsRef.current === ws) {
+          wsRef.current = undefined;
+        }
+        clearMarkers();
+        scheduleReconnect();
+      });
+
+      ws.addEventListener("error", () => {
+        ws.close();
+      });
+    };
+
+    const pauseConnection = () => {
+      paused = true;
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = undefined;
+      }
+      wsRef.current?.close();
+      wsRef.current = undefined;
+      clearMarkers();
+    };
+
+    const resumeConnection = () => {
+      if (!mapRef.current) {
+        return;
+      }
+
+      paused = false;
+      reconnectAttempts = 0;
+      connect();
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        pauseConnection();
+      } else {
+        resumeConnection();
+      }
+    };
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("pagehide", pauseConnection);
+    window.addEventListener("pageshow", resumeConnection);
+    connect();
 
     return () => {
+      closed = true;
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+      }
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("pagehide", pauseConnection);
+      window.removeEventListener("pageshow", resumeConnection);
       wsRef.current?.close();
-      markers = [];
-      setFlights({});
+      wsRef.current = undefined;
+      clearMarkers();
     };
   }, [props.wsUrl, getFlight]);
 
